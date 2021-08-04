@@ -48,8 +48,6 @@ class App extends Component {
   fetchImages = () => {
     const { currentPage, searchQuery } = this.state;
 
-    console.log(this.state);
-
     this.setState({ isLoading: true });
 
     fetchImage(currentPage, searchQuery)
