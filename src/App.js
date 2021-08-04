@@ -1,7 +1,7 @@
 import "./App.css";
 import React, { Component } from "react";
 import ImageGallery from "./components/ImageGallery";
-import fetchData from "./services/pixabay-api";
+import fetchImage from "./services/pixabay-api";
 import SearchBar from "./components/Searchbar";
 import Modal from "./components/Modal";
 import Button from "./components/Button";
@@ -17,10 +17,22 @@ class App extends Component {
     modalImg: "",
     modalAlt: "",
     error: null,
+    found: true,
   };
 
+  componentDidMount() {}
+
   componentDidUpdate(prevProps, prevState) {
-    if (prevState.searchQuery !== this.state.searchQuery) {
+    if (this.state.page > 2) {
+      const { scrollTop, clientHeight } = document.documentElement;
+      window.scrollTo({
+        top: scrollTop + clientHeight - 165,
+        behavior: "smooth",
+      });
+    }
+    const prevQuery = prevState.searchQuery;
+    const nextQuery = this.state.searchQuery;
+    if (prevQuery !== nextQuery) {
       this.fetchImages();
     }
   }
@@ -30,26 +42,37 @@ class App extends Component {
       searchQuery: query,
       currentPage: 1,
       images: [],
-      error: null,
     });
   };
 
   fetchImages = () => {
     const { currentPage, searchQuery } = this.state;
-    const options = { searchQuery, currentPage };
+
+    console.log(this.state);
 
     this.setState({ isLoading: true });
 
-    fetchData(options)
+    fetchImage(currentPage, searchQuery)
       .then((images) => {
-        this.setState((prevState) => ({
-          images: [...prevState.images, ...images],
-          currentPage: prevState.currentPage + 1,
-        }));
-        this.scrollWindow();
+        if (images.length === 0) {
+          this.setState({ found: false });
+        } else {
+          this.setState((prevState) => ({
+            images: [...prevState.images, ...images],
+            currentPage: prevState.currentPage + 1,
+            found: true,
+          }));
+        }
       })
       .catch((error) => this.setState({ error }))
       .finally(() => this.setState({ isLoading: false }));
+    if (currentPage > 1) {
+      const { scrollHeight } = document.documentElement;
+      window.scrollTo({
+        top: scrollHeight,
+        behavior: "smooth",
+      });
+    }
   };
 
   scrollWindow() {
@@ -76,21 +99,23 @@ class App extends Component {
   };
 
   render() {
-    const { error, images, isLoading, showModal, modalImg, modalAlt } =
+    const { error, images, isLoading, showModal, modalImg, modalAlt, found } =
       this.state;
-    const shouldRenderLoadMoreButton = images.length > 0 && !isLoading;
+    // const shouldRenderLoadMoreButton = images.length > 0 && !isLoading && found;
 
     return (
       <>
         <SearchBar changeQuery={this.onChangeQuery} />
-        {error && (
+        {(error || !found) && !images.length && (
           <h1 style={{ color: "#ff0000", textAlign: "center" }}>
-            Something going wrong
+            Ooops! Something going wrong...
           </h1>
         )}
         <ImageGallery images={images} openModal={this.openModal} />
         {isLoading && <Spinner />}
-        {shouldRenderLoadMoreButton && <Button onClick={this.fetchImages} />}
+        {images.length > 0 && !isLoading && found && (
+          <Button onClick={this.fetchImages} />
+        )}
         {showModal && (
           <Modal closeModal={this.closeModal}>
             <img src={modalImg} alt={modalAlt} />
